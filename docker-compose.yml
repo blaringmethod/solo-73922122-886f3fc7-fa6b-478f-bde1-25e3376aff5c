@@ -3,13 +3,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: systemd-sandbox-checker:1.0.0
-    container_name: systemd-sandbox-checker
+    image: controlled-diag-runner:2.0.0
+    container_name: controlled-diag-runner
     ports:
       # 宿主机 8080 -> 容器 8080；如端口冲突可修改左侧
       - "8080:8080"
     restart: unless-stopped
-    # 纯计算服务：只读根文件系统、无特权、不挂主机目录
+    # 只读根文件系统；可写工具目录单独挂卷，作为受控的攻击演示面
     read_only: true
     security_opt:
       - no-new-privileges:true
@@ -17,9 +17,45 @@ services:
       - ALL
     tmpfs:
       - /tmp:size=16m
+    volumes:
+      # 可写工具目录：演示“换入其他程序”的攻击面。
+      # 服务不信任该目录内容，只信任清单中的 SHA-256 与 memfd 封印字节。
+      - diag-tools:/var/lib/diag-tools
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3).status==200 else 1)"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 5s
+
+  # 演示用一次性容器：与服务共享可写工具卷，用于替换/篡改助手文件。
+  # 用法：
+  #   docker compose run --rm tamper-demo /opt/demos/02_tamper_demo.sh
+  #   docker compose run --rm tamper-demo python3 -I /opt/demos/03_concurrent_replace_demo.py
+  tamper-demo:
+    image: controlled-diag-runner:2.0.0
+    depends_on:
+      - sandbox-checker
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        echo "可用演示：" &&
+        echo "  docker compose run --rm tamper-demo /opt/demos/02_tamper_demo.sh" &&
+        echo "  docker compose run --rm tamper-demo python3 -I /opt/demos/03_concurrent_replace_demo.py"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=16m
+    environment:
+      BASE_URL: http://sandbox-checker:8080
+      DIAG_TOOLS_DIR: /var/lib/diag-tools
+      GOLDEN_DIR: /opt/diag-golden
+    volumes:
+      - diag-tools:/var/lib/diag-tools
+      - ./demos:/opt/demos:ro
+
+volumes:
+  diag-tools:

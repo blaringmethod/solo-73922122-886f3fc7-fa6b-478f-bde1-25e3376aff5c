@@ -104,6 +104,11 @@ class HTTPException(Exception):
         self.detail = detail
 
 
+class Request:  # 受控执行端点用于客户端断连探测的最小占位
+    async def is_disconnected(self):
+        return False
+
+
 class _Route:
     def __init__(self, path, method, fn):
         self.path = path
@@ -132,6 +137,7 @@ class _FastAPI:
 fastapi = types.ModuleType("fastapi")
 fastapi.FastAPI = _FastAPI
 fastapi.HTTPException = HTTPException
+fastapi.Request = Request
 sys.modules["fastapi"] = fastapi
 
 responses = types.ModuleType("fastapi.responses")

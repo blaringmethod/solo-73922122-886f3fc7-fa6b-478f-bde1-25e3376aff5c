@@ -1,0 +1,22 @@
+{
+  "defaults": {
+    "timeout_seconds": 3.0,
+    "max_output_bytes": 65536,
+    "max_assistant_bytes": 8388608,
+    "max_concurrency": 64
+  },
+  "assistants": {
+    "archinfo": {
+      "path": "/var/lib/diag-tools/archinfo",
+      "args": ["--verbose"]
+    },
+    "slowprobe": {
+      "path": "/var/lib/diag-tools/slowprobe",
+      "args": []
+    },
+    "bigprinter": {
+      "path": "/var/lib/diag-tools/bigprinter",
+      "args": []
+    }
+  }
+}
